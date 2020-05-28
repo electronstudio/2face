@@ -8,6 +8,9 @@ import com.googlecode.lanterna.gui2.MultiWindowTextGUI
 import com.googlecode.lanterna.gui2.WindowBasedTextGUI
 import com.googlecode.lanterna.gui2.dialogs.MessageDialog
 import com.googlecode.lanterna.gui2.dialogs.MessageDialogButton
+import com.googlecode.lanterna.gui2.dialogs.TextInputDialog
+import com.googlecode.lanterna.terminal.SimpleTerminalResizeListener
+import com.googlecode.lanterna.terminal.TerminalResizeListener
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -28,16 +31,6 @@ class TextUI() {
     lateinit var page: Document
 
 
-          //  = requestDocument(url) //gopher.getURI(URI(url))
-
-
-
-
-        //document.lines()
-
-
-
-
     var scroll = 0
     val terminalFactory = DefaultTerminalFactory()
     val screen = terminalFactory.createScreen()
@@ -45,8 +38,8 @@ class TextUI() {
 
     val textGUI: WindowBasedTextGUI = MultiWindowTextGUI(screen)
 
-    val terminalSize = screen.terminalSize
-    val TEXT_ROWS = terminalSize.rows-3
+    var terminalSize = screen.terminalSize
+    var TEXT_ROWS = terminalSize.rows-3
 
     init {
 
@@ -55,31 +48,19 @@ class TextUI() {
 
         val textGUI: WindowBasedTextGUI = MultiWindowTextGUI(screen)
 
-
-//        MessageDialog.showMessageDialog(
-//            textGUI,
-//            "MessageBox",
-//            "This is a message box",
-//            MessageDialogButton.OK
-//        )
-//
-//
-
-
-        loadPage("gopher://gemini.circumlunar.spaced/")
+        screen.terminal.addResizeListener { terminal, newSize ->
+            run {
+                println("resize")
+                terminalSize = newSize
+                TEXT_ROWS = terminalSize.rows-3
+                println("terminal size $terminalSize")
+                screen.doResizeIfNecessary()
+                redraw()
+            }
+        }
 
 
-
-
-
-
-//        println("page is ${page.javaClass}")
-//        println("first line is ${items[0]}")
-//        println("first display is ${items[0].display}")
-
-        //System.exit(0)
-
-
+        loadPage("gopher://gemini.circumlunar.space/")
 
 
         while (true) {
@@ -110,6 +91,8 @@ class TextUI() {
                     val shortcut = shortcuts.indexOf(key.character)
                     if (key.character == ' ') {
                         scroll += TEXT_ROWS
+                    } else if (key.character=='0'){
+                        editURL()
                     } else if (shortcut > -1) {
                         val link = links.getOrNull(shortcut)
                         println(link)
@@ -120,22 +103,27 @@ class TextUI() {
                     }
                 }
             }
-            scroll = scroll.coerceAtLeast(0).coerceAtMost(page.items.size-TEXT_ROWS)
+
         }
     }
 
+    fun editURL(){
+        val input = TextInputDialog.showDialog(textGUI, "URL","", page.url)
+        input?.let { loadPage(it) }
+    }
+
     fun loadPage(url: String){
-        println("LOADPAGE $url")
         val response = requestDocument(url)
-        println("RESPONSE IS $response")
         if (response is GopherDocument){
             page = response
         }
         else if (response is TextDocument){
             page = response
+        }else if (response is Document){
+            page = response
         }
         else{
-            page = Document()
+            page = Document(url)
             MessageDialog.showMessageDialog(
                 textGUI,
                 "Error",
@@ -156,21 +144,18 @@ class TextUI() {
 
     fun redraw(){
 
+        scroll = scroll.coerceAtMost(page.items.size-TEXT_ROWS).coerceAtLeast(0)
+        println("redrawing $TEXT_ROWS rows $terminalSize $scroll")
         screen.clear()
-
         links.clear()
-
-
         put("0",0, 0, BLACK, CYAN)
-
-
-        put(page.url,0, 0, CYAN, BLACK)
+        put(page.url,2, 0, CYAN, BLACK)
 
         var shortcut = 0
 
-
         for (i in 0..terminalSize.rows-3){
             val line = page.items.getOrNull(i+scroll)
+
             line?.let {
                 if(line.url != null){
                     if(shortcut < shortcuts.length) {
@@ -189,12 +174,15 @@ class TextUI() {
         }
 
         val pages = Math.ceil(page.items.size.toDouble() / TEXT_ROWS).toInt()
-        val current = (scroll.toDouble() / TEXT_ROWS) + 1
+        val current = ((scroll.toDouble() / TEXT_ROWS) + 1).toInt()
 
-
-        put("SPACE", 10, terminalSize.rows-1, BLACK, CYAN)
-
-        put("[$current/$pages]", 0, terminalSize.rows-1, CYAN, BLACK)
+        if(scroll+TEXT_ROWS<page.items.size){
+            val s = "[$current/$pages]"
+            put(s, 0, terminalSize.rows-1, CYAN, BLACK)
+            put("SPACE", s.length+1, terminalSize.rows-1, BLACK, CYAN)
+        }else{
+            put("[$pages/$pages]", 0, terminalSize.rows-1, CYAN, BLACK)
+        }
 
 
         screen.refresh();

@@ -5,8 +5,7 @@ val DEFAULT_PORT_GEMINI = 1965
 
 abstract class Response {}
 
-open class Document : Response() {
-    open val url = ""
+open class Document(open val url:String = "") : Response() {
     val items: ArrayList<Item> = arrayListOf()
 }
 
@@ -30,11 +29,13 @@ class Item(val text: String, val url: String? = null) {
             val s = line.drop(1).split('\t', limit = 4)
             val type = line[0].toString()
             val display = s[0].trim()
+            val selector = s[1].trim()
+            val hostName = s[2].trim()
+            val port = s[3].trim().toInt()
             if(type=="0" || type=="1") {
-                val selector = s[1].trim()
-                val hostName = s[2].trim()
-                val port = s[3].trim().toInt()
-                return  Item(display, "gopher://${hostName}:${port}/${type}/${selector}")
+                return Item(display, "gopher://${hostName}:${port}/${type}/${selector}")
+            }else if(type=="h" && selector.startsWith("URL:", true)){
+                return Item(display, selector.drop(4))
             }else{
                 return Item(display)
             }
