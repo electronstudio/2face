@@ -4,6 +4,10 @@ import com.googlecode.lanterna.TextColor
 import com.googlecode.lanterna.input.KeyType
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory
 import com.googlecode.lanterna.TextColor.ANSI.*
+import com.googlecode.lanterna.gui2.MultiWindowTextGUI
+import com.googlecode.lanterna.gui2.WindowBasedTextGUI
+import com.googlecode.lanterna.gui2.dialogs.MessageDialog
+import com.googlecode.lanterna.gui2.dialogs.MessageDialogButton
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -23,9 +27,7 @@ class TextUI() {
 
     lateinit var page: Document
 
-    init {
-       loadPage("gopher://gemini.circumlunar.space")
-    }
+
           //  = requestDocument(url) //gopher.getURI(URI(url))
 
 
@@ -41,10 +43,33 @@ class TextUI() {
     val screen = terminalFactory.createScreen()
     val textGraphics = screen.newTextGraphics()
 
+    val textGUI: WindowBasedTextGUI = MultiWindowTextGUI(screen)
+
     val terminalSize = screen.terminalSize
     val TEXT_ROWS = terminalSize.rows-3
 
     init {
+
+        screen.startScreen()
+        screen.cursorPosition = null
+
+        val textGUI: WindowBasedTextGUI = MultiWindowTextGUI(screen)
+
+
+//        MessageDialog.showMessageDialog(
+//            textGUI,
+//            "MessageBox",
+//            "This is a message box",
+//            MessageDialogButton.OK
+//        )
+//
+//
+
+
+        loadPage("gopher://gemini.circumlunar.spaced/")
+
+
+
 
 
 
@@ -54,8 +79,7 @@ class TextUI() {
 
         //System.exit(0)
 
-        screen.startScreen()
-        screen.cursorPosition = null
+
 
 
         while (true) {
@@ -112,7 +136,12 @@ class TextUI() {
         }
         else{
             page = Document()
-            println("ERROR, making empty documents")
+            MessageDialog.showMessageDialog(
+                textGUI,
+                "Error",
+                response.toString(),
+                MessageDialogButton.OK
+            )
         }
     }
 
@@ -131,8 +160,6 @@ class TextUI() {
 
         links.clear()
 
-        println(terminalSize)
-
 
         put("0",0, 0, BLACK, CYAN)
 
@@ -141,11 +168,9 @@ class TextUI() {
 
         var shortcut = 0
 
-        println("PAGE ITEMS ${page.items.size}")
 
         for (i in 0..terminalSize.rows-3){
             val line = page.items.getOrNull(i+scroll)
-            println("LINE $line.url")
             line?.let {
                 if(line.url != null){
                     if(shortcut < shortcuts.length) {

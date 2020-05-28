@@ -10,12 +10,8 @@ import java.net.URI
 
 
 fun main(args: Array<String>) {
- //   val gopher = Gopher()
-//    val uri = URI("gopher://gemini.circumlunar.space")
-//    println(uri.path)
-//    val d = gopher.get(uri)
-//    println(d)
 
+  //  TUI()
     TextUI()
 //
 //    JFrame.setDefaultLookAndFeelDecorated(true)

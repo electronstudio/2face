@@ -36,7 +36,7 @@ class Gopher : Protocol() {
 //        if (uri.scheme != "gopher") {
 //            return GopherError("Don't know how to handle ${uri.scheme}")
 //        }
-        //  try {
+          try {
         val txt = get(uri)
         if (uri.path.length < 2 || uri.path[1] == '1') {
             println("its a gopher")
@@ -47,8 +47,8 @@ class Gopher : Protocol() {
         } else {
             return Error("Unknown gopher item type")
         }
-        //  } catch (e: Exception) {
-        //      return Error(e.toString())
-        //  }
+          } catch (e: Exception) {
+              return Error(e.toString())
+          }
     }
 }
