@@ -10,6 +10,7 @@ import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.Socket
 import java.net.URI
+import java.net.URLDecoder
 
 const val DEBUG_SLOW_NETWORK = false
 
@@ -23,7 +24,8 @@ class Gopher : Protocol() {
             out.use {
                 val input = BufferedReader(InputStreamReader(socket.getInputStream()))
                 input.use {
-                    out.print("$selector\r\n")
+                    val s = URLDecoder.decode(selector, "UTF-8")
+                    out.print("$s\r\n")
                     out.flush()
                     val data = input.readText()
                     if (DEBUG_SLOW_NETWORK) Thread.sleep(1000)

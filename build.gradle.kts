@@ -9,7 +9,7 @@ application {
 }
 
 group = "uk.co.electronstudio"
-version = "1.0-SNAPSHOT"
+version = ""
 
 repositories {
     mavenCentral()
@@ -19,6 +19,8 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
     testCompile("junit", "junit", "4.12")
     implementation("com.googlecode.lanterna:lanterna:3.0.3")
+    implementation("net.sourceforge.argparse4j", "argparse4j", "0.8.1")
+   // implementation("org.apache.commons","commons-text","1.8")
    // implementation("org.pushing-pixels:radiance-substance:2.5.1")
 
 }
@@ -44,7 +46,7 @@ val jar by tasks.getting(Jar::class) {
 }
 
 val fatJar = task("fatJar", type = Jar::class) {
-    baseName = "${project.name}-fat"
+    baseName = "2face"
     manifest {
         attributes["Implementation-Title"] = "2face"
         attributes["Implementation-Version"] = version

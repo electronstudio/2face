@@ -1,25 +1,24 @@
 package uk.co.electronstudio.gopher
 
 import com.googlecode.lanterna.TextColor
-import com.googlecode.lanterna.terminal.DefaultTerminalFactory
 import com.googlecode.lanterna.TextColor.ANSI.*
 import com.googlecode.lanterna.gui2.MultiWindowTextGUI
 import com.googlecode.lanterna.gui2.WindowBasedTextGUI
-import com.googlecode.lanterna.gui2.dialogs.MessageDialog
-import com.googlecode.lanterna.gui2.dialogs.MessageDialogButton
 import com.googlecode.lanterna.gui2.dialogs.TextInputDialog
 import com.googlecode.lanterna.input.KeyType.*
+import com.googlecode.lanterna.terminal.DefaultTerminalFactory
+import java.net.URLDecoder
 import java.util.*
-import kotlin.collections.ArrayList
 import kotlin.concurrent.thread
 
 
-class TextUI() {
+class TextUI(startURL: String) {
 
-    val shortcuts="123456789abcdefghijklmnopqrstuvwxyz"
+    val shortcuts = "123456789abcdefghijklmnopqrstuvwxyz"
     val links: ArrayList<Item> = arrayListOf()
+
     @Volatile
-    var selectedLink=-1
+    var selectedLink = -1
 
     val history = Stack<String>()
 
@@ -41,7 +40,7 @@ class TextUI() {
     val textGUI: WindowBasedTextGUI = MultiWindowTextGUI(screen)
 
     var terminalSize = screen.terminalSize
-    var TEXT_ROWS = terminalSize.rows-3
+    var TEXT_ROWS = terminalSize.rows - 3
 
     init {
 
@@ -53,36 +52,35 @@ class TextUI() {
         screen.terminal.addResizeListener { _, newSize ->
             run {
                 terminalSize = newSize
-                TEXT_ROWS = terminalSize.rows-3
+                TEXT_ROWS = terminalSize.rows - 3
                 screen.doResizeIfNecessary()
                 redraw()
             }
         }
 
 
-        loadPage("gopher://circumlunar.space")
+        loadPage(startURL)
 
 
         while (true) {
             redraw()
             val key = screen.readInput()
-            println(key.keyType)
-            when(key.keyType) {
+            when (key.keyType) {
                 ArrowDown -> {
                     scroll++
                 }
                 ArrowUp -> {
                     scroll--
                 }
-                PageDown ->{
+                PageDown -> {
                     scroll += TEXT_ROWS
                 }
-                PageUp ->{
+                PageUp -> {
                     scroll -= TEXT_ROWS
                 }
                 ArrowLeft -> {
-                    if(history.isNotEmpty()) {
-                        selectedLink=-1
+                    if (history.isNotEmpty()) {
+                        selectedLink = -1
                         loadPage(history.pop())
                     }
                 }
@@ -92,14 +90,14 @@ class TextUI() {
                     val shortcut = shortcuts.indexOf(key.character)
                     if (key.character == ' ') {
                         scroll += TEXT_ROWS
-                    } else if (key.character=='0'){
+                    } else if (key.character == '0') {
                         editURL()
                     } else if (shortcut > -1) {
                         val link = links.getOrNull(shortcut)
 
 
                         link?.url?.let {
-                            selectedLink=shortcut
+                            selectedLink = shortcut
                             redraw()
                             history.push(page.url)
                             loadPage(it)
@@ -144,43 +142,51 @@ class TextUI() {
         }
     }
 
-    fun editURL(){
-        val input = TextInputDialog.showDialog(textGUI, "URL","", page.url)
+    fun editURL() {
+        val input = TextInputDialog.showDialog(textGUI, "URL", "", page.url)
         input?.let { loadPage(it) }
     }
 
     @Volatile
     var futureResponse: Response? = null
 
-    fun loadPage(url: String){
+    fun loadPage(url: String) {
         thread {
-            val response = requestDocument(url)
-            if (response is GopherDocument) {
-                futureResponse = response
-            } else if (response is TextDocument) {
-                futureResponse = response
-            } else if (response is Document) {
-                futureResponse = response
-            } else if (response is Error) {
-                futureResponse = response
-            } else {
-                futureResponse = Document(url)
+            try {
+                val response = requestDocument(url)
+                if (response is GopherDocument) {
+                    futureResponse = response
+                } else if (response is TextDocument) {
+                    futureResponse = response
+                } else if (response is Document) {
+                    futureResponse = response
+                } else if (response is Error) {
+                    futureResponse = response
+                } else {
+                    futureResponse = Document(url)
+                }
+            } catch (e: Exception) {
+                val d = Document(url)
+                d.items.add(Item(e.toString(), '3'))
+
+                futureResponse = d
             }
-          //  redraw()
+
+            //  redraw()
         }
         thread {
-            val spinner= listOf("/","/","-","-","\\","\\","|","|")
-            var i=0
-            while(futureResponse==null) {
-                put(spinner[i++ % spinner.size], terminalSize.columns-1, terminalSize.rows-1, BLACK, CYAN)
+            val spinner = listOf("/", "/", "-", "-", "\\", "\\", "|", "|")
+            var i = 0
+            while (futureResponse == null) {
+                put(spinner[i++ % spinner.size], terminalSize.columns - 1, terminalSize.rows - 1, BLACK, CYAN)
                 screen.refresh();
                 Thread.sleep(66)
             }
             futureResponse.let {
-                if(it is Document){
+                if (it is Document) {
                     page = it
 
-                }else if (it is Error) {
+                } else if (it is Error) {
                     page = Document(url)
                     page.items.add(Item(it.toString(), '3'))
                 }
@@ -192,12 +198,14 @@ class TextUI() {
     }
 
     @Synchronized
-    fun put(txt: String, column: Int=0, row: Int=0,
-            foreground: TextColor=WHITE, background: TextColor=BLACK, invert: Boolean = false){
-        if(invert){
+    fun put(
+        txt: String, column: Int = 0, row: Int = 0,
+        foreground: TextColor = WHITE, background: TextColor = DEFAULT, invert: Boolean = false
+    ) {
+        if (invert) {
             textGraphics.foregroundColor = background
             textGraphics.backgroundColor = foreground
-        }else{
+        } else {
             textGraphics.foregroundColor = foreground
             textGraphics.backgroundColor = background
         }
@@ -205,37 +213,37 @@ class TextUI() {
     }
 
 
-
-
     @Synchronized
-    fun redraw(){
+    fun redraw() {
 
-        scroll = scroll.coerceAtMost(page.items.size-TEXT_ROWS).coerceAtLeast(0)
+        scroll = scroll.coerceAtMost(page.items.size - TEXT_ROWS).coerceAtLeast(0)
 
         screen.clear()
         links.clear()
-        put("0",0, 0, BLACK, CYAN)
-        put(page.url,2, 0, CYAN, BLACK)
+        put("0", 0, 0, BLACK, CYAN)
+        put(URLDecoder.decode(page.url,"UTF-8"), 2, 0, CYAN, DEFAULT)
 
         var shortcut = 0
 
-        for (i in 0..terminalSize.rows-3){
-            val line = page.items.getOrNull(i+scroll)
+        for (i in 0..terminalSize.rows - 3) {
+            val line = page.items.getOrNull(i + scroll)
+
 
             line?.let {
-                if(line.url != null){
+                //println(line.url)
+                if (line.url != null) {
                     var invert = false
-                    if(shortcut < shortcuts.length) {
+                    if (shortcut < shortcuts.length) {
                         invert = (shortcut == selectedLink)
                         put(shortcuts[shortcut].toString(), 0, i + 1, BLACK, GREEN)
                         shortcut++
                         links.add(line)
                     }
-                    put(line.text+if(line.type=='1') "/" else "", 2, i + 1, GREEN, BLACK, invert)
-                }else {
-                    if(line.text.startsWith('#')){
+                    put(line.text + if (line.type == '1') "/" else "", 2, i + 1, GREEN, DEFAULT, invert)
+                } else {
+                    if (line.text.startsWith('#')) {
                         put(line.text, 0, i + 1, RED)
-                    }else {
+                    } else {
                         put(line.text, 0, i + 1)
                     }
                 }
@@ -245,12 +253,12 @@ class TextUI() {
         val pages = Math.ceil(page.items.size.toDouble() / TEXT_ROWS).toInt()
         val current = ((scroll.toDouble() / TEXT_ROWS) + 1).toInt()
 
-        if(scroll+TEXT_ROWS<page.items.size){
+        if (scroll + TEXT_ROWS < page.items.size) {
             val s = "[$current/$pages]"
-            put(s, 0, terminalSize.rows-1, CYAN, BLACK)
-            put("SPACE", s.length+1, terminalSize.rows-1, BLACK, CYAN)
-        }else{
-            put("[$pages/$pages]", 0, terminalSize.rows-1, CYAN, BLACK)
+            put(s, 0, terminalSize.rows - 1, CYAN, DEFAULT)
+            put("SPACE", s.length + 1, terminalSize.rows - 1, BLACK, CYAN)
+        } else {
+            put("[$pages/$pages]", 0, terminalSize.rows - 1, CYAN, DEFAULT)
         }
 
 

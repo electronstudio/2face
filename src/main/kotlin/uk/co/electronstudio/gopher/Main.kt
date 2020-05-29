@@ -3,17 +3,38 @@
 package uk.co.electronstudio.gopher
 
 
+import java.awt.Desktop
+
+import net.sourceforge.argparse4j.ArgumentParsers
+import net.sourceforge.argparse4j.impl.Arguments
+import net.sourceforge.argparse4j.inf.ArgumentParserException
+import net.sourceforge.argparse4j.inf.Namespace
 import uk.co.electronstudio.gopher.protocols.Gemini
 import uk.co.electronstudio.gopher.protocols.Gopher
-import java.awt.Desktop
 import java.net.URI
 import java.net.URISyntaxException
 
 
 fun main(args: Array<String>) {
 
+
+    val parser = ArgumentParsers.newFor("2face").build()
+        .description("Browser for gopher/gemini")
+    parser.addArgument("url")
+        .nargs("?")
+        .help("Gopher or Gemini URL")
+
+    try {
+        val res: Namespace = parser.parseArgs(args)
+        val url = res.getString("url") ?: "gopher://gopher.floodgap.com/"
+        println("url is $url")
+        TextUI(url)
+    } catch (e: ArgumentParserException) {
+        parser.handleError(e)
+    }
+
   //  TUI()
-    TextUI()
+
 //
 //    JFrame.setDefaultLookAndFeelDecorated(true)
 //
