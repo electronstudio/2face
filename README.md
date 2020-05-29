@@ -18,7 +18,9 @@ Follow instructions at https://adoptopenjdk.net/installation.html#
 
     apt install openjdk-11-jre
    
-## 2 Download latest release from releases section.
+## 2 Download latest release 
+
+https://github.com/electronstudio/2face/releases/download/v0.0.1/2face.jar
 
 ## 3 Run
 
