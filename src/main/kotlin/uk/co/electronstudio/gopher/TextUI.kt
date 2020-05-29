@@ -9,6 +9,7 @@ import com.googlecode.lanterna.gui2.WindowBasedTextGUI
 import com.googlecode.lanterna.gui2.dialogs.MessageDialog
 import com.googlecode.lanterna.gui2.dialogs.MessageDialogButton
 import com.googlecode.lanterna.gui2.dialogs.TextInputDialog
+import com.googlecode.lanterna.input.KeyType.*
 import com.googlecode.lanterna.terminal.SimpleTerminalResizeListener
 import com.googlecode.lanterna.terminal.TerminalResizeListener
 import java.util.*
@@ -20,6 +21,8 @@ class TextUI() {
 
     val shortcuts="123456789abcdefghijklmnopqrstuvwxyz"
     val links: ArrayList<Item> = arrayListOf()
+    @Volatile
+    var selectedLink=-1
 
     val history = Stack<String>()
 
@@ -29,6 +32,7 @@ class TextUI() {
 
     //var url = "gopher://gemini.circumlunar.space:70/0/docs/faq.txt"
 
+    @Volatile
     var page: Document = Document("")
 
 
@@ -49,12 +53,10 @@ class TextUI() {
 
         val textGUI: WindowBasedTextGUI = MultiWindowTextGUI(screen)
 
-        screen.terminal.addResizeListener { terminal, newSize ->
+        screen.terminal.addResizeListener { _, newSize ->
             run {
-                println("resize")
                 terminalSize = newSize
                 TEXT_ROWS = terminalSize.rows-3
-                println("terminal size $terminalSize")
                 screen.doResizeIfNecessary()
                 redraw()
             }
@@ -69,26 +71,27 @@ class TextUI() {
             val key = screen.readInput()
             println(key.keyType)
             when(key.keyType) {
-                KeyType.ArrowDown -> {
+                ArrowDown -> {
                     scroll++
                 }
-                KeyType.ArrowUp -> {
+                ArrowUp -> {
                     scroll--
                 }
-                KeyType.PageDown ->{
+                PageDown ->{
                     scroll += TEXT_ROWS
                 }
-                KeyType.PageUp ->{
+                PageUp ->{
                     scroll -= TEXT_ROWS
                 }
-                KeyType.ArrowLeft -> {
+                ArrowLeft -> {
                     if(history.isNotEmpty()) {
+                        selectedLink=-1
                         loadPage(history.pop())
                     }
                 }
 
 
-                KeyType.Character -> {
+                Character -> {
                     val shortcut = shortcuts.indexOf(key.character)
                     if (key.character == ' ') {
                         scroll += TEXT_ROWS
@@ -96,13 +99,49 @@ class TextUI() {
                         editURL()
                     } else if (shortcut > -1) {
                         val link = links.getOrNull(shortcut)
-                        println(link)
+
+
                         link?.url?.let {
+                            selectedLink=shortcut
+                            redraw()
                             history.push(page.url)
                             loadPage(it)
                         }
                     }
                 }
+                Escape -> TODO()
+                Backspace -> TODO()
+                ArrowRight -> TODO()
+                Insert -> TODO()
+                Delete -> TODO()
+                Home -> TODO()
+                End -> TODO()
+                Tab -> TODO()
+                ReverseTab -> TODO()
+                Enter -> TODO()
+                F1 -> TODO()
+                F2 -> TODO()
+                F3 -> TODO()
+                F4 -> TODO()
+                F5 -> TODO()
+                F6 -> TODO()
+                F7 -> TODO()
+                F8 -> TODO()
+                F9 -> TODO()
+                F10 -> TODO()
+                F11 -> TODO()
+                F12 -> TODO()
+                F13 -> TODO()
+                F14 -> TODO()
+                F15 -> TODO()
+                F16 -> TODO()
+                F17 -> TODO()
+                F18 -> TODO()
+                F19 -> TODO()
+                Unknown -> TODO()
+                CursorLocation -> TODO()
+                MouseEvent -> TODO()
+                EOF -> TODO()
             }
 
         }
@@ -146,14 +185,22 @@ class TextUI() {
             }
             page = nextPage!!
             nextPage = null
+            selectedLink = -1
             redraw()
 
         }
     }
 
-    fun put(txt: String, column: Int=0, row: Int=0, foreground: TextColor=WHITE, background: TextColor=BLACK){
-        textGraphics.foregroundColor = foreground
-        textGraphics.backgroundColor = background
+    @Synchronized
+    fun put(txt: String, column: Int=0, row: Int=0,
+            foreground: TextColor=WHITE, background: TextColor=BLACK, invert: Boolean = false){
+        if(invert){
+            textGraphics.foregroundColor = background
+            textGraphics.backgroundColor = foreground
+        }else{
+            textGraphics.foregroundColor = foreground
+            textGraphics.backgroundColor = background
+        }
         textGraphics.putString(column, row, txt)
     }
 
@@ -177,16 +224,19 @@ class TextUI() {
 
             line?.let {
                 if(line.url != null){
+                    var invert = false
                     if(shortcut < shortcuts.length) {
-                        put(shortcuts[shortcut++].toString(), 0, i + 1, BLACK, GREEN)
+                        invert = (shortcut == selectedLink)
+                        put(shortcuts[shortcut].toString(), 0, i + 1, BLACK, GREEN)
+                        shortcut++
                         links.add(line)
                     }
-                    put(line.text, 2, i + 1, GREEN, BLACK)
+                    put(line.text, 2, i + 1, GREEN, BLACK, invert)
                 }else {
                     if(line.text.startsWith('#')){
                         put(line.text, 0, i + 1, RED)
                     }else {
-                        put(line.text, 0, i + 1)
+                        put(line.text+if(line.type=='1') "/" else "", 0, i + 1)
                     }
                 }
             }

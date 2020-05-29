@@ -1,5 +1,7 @@
 package uk.co.electronstudio.gopher
 
+import java.net.URI
+
 val DEFAULT_PORT_GOPHER = 70
 val DEFAULT_PORT_GEMINI = 1965
 
@@ -23,21 +25,24 @@ class GopherDocument(txt: String, override val url: String) : Document() {
 
 
 
-class Item(val text: String, val url: String? = null) {
+class Item(val text: String, val type: Char, val url: String? = null) {
+
+
+
     companion object {
         fun fromGopherLine(line: String): Item {
             val s = line.drop(1).split('\t', limit = 4)
-            val type = line[0].toString()
+            val type = line[0]
             val display = s[0].trim()
             val selector = s[1].trim()
             val hostName = s[2].trim()
             val port = s[3].trim().toInt()
-            if(type=="0" || type=="1") {
-                return Item(display, "gopher://${hostName}:${port}/${type}/${selector}")
-            }else if(type=="h" && selector.startsWith("URL:", true)){
-                return Item(display, selector.drop(4))
+            if(type=='0' || type=='1') {
+                return Item(display, type,"gopher://${hostName}:${port}/${type}${selector}")
+            }else if(type=='h' && selector.startsWith("URL:", true)){
+                return Item(display, type, selector.drop(4))
             }else{
-                return Item(display)
+                return Item(display, type)
             }
         }
     }
@@ -46,7 +51,7 @@ class Item(val text: String, val url: String? = null) {
 
 class TextDocument(txt: String, override val url: String) : Document() {
     init {
-        txt.lines().forEach { items.add(Item(it)) }
+        txt.lines().forEach { items.add(Item(it,'i')) }
     }
 }
 
