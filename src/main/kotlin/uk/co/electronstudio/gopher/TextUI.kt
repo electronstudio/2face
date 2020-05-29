@@ -13,6 +13,7 @@ import com.googlecode.lanterna.terminal.SimpleTerminalResizeListener
 import com.googlecode.lanterna.terminal.TerminalResizeListener
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.concurrent.thread
 
 
 class TextUI() {
@@ -28,7 +29,7 @@ class TextUI() {
 
     //var url = "gopher://gemini.circumlunar.space:70/0/docs/faq.txt"
 
-    lateinit var page: Document
+    var page: Document = Document("")
 
 
     var scroll = 0
@@ -112,24 +113,41 @@ class TextUI() {
         input?.let { loadPage(it) }
     }
 
+    @Volatile
+    var nextPage: Document? = null
+
     fun loadPage(url: String){
-        val response = requestDocument(url)
-        if (response is GopherDocument){
-            page = response
+        thread {
+            val response = requestDocument(url)
+            if (response is GopherDocument) {
+                nextPage = response
+            } else if (response is TextDocument) {
+                nextPage = response
+            } else if (response is Document) {
+                nextPage = response
+            } else {
+                nextPage = Document(url)
+                MessageDialog.showMessageDialog(
+                    textGUI,
+                    "Error",
+                    response.toString(),
+                    MessageDialogButton.OK
+                )
+            }
+          //  redraw()
         }
-        else if (response is TextDocument){
-            page = response
-        }else if (response is Document){
-            page = response
-        }
-        else{
-            page = Document(url)
-            MessageDialog.showMessageDialog(
-                textGUI,
-                "Error",
-                response.toString(),
-                MessageDialogButton.OK
-            )
+        thread {
+            val spinner= listOf("/","/","-","-","\\","\\","|","|")
+            var i=0
+            while(nextPage==null) {
+                put(spinner[i++ % spinner.size], terminalSize.columns-1, terminalSize.rows-1, BLACK, CYAN)
+                screen.refresh();
+                Thread.sleep(66)
+            }
+            page = nextPage!!
+            nextPage = null
+            redraw()
+
         }
     }
 
@@ -142,6 +160,7 @@ class TextUI() {
 
 
 
+    @Synchronized
     fun redraw(){
 
         scroll = scroll.coerceAtMost(page.items.size-TEXT_ROWS).coerceAtLeast(0)

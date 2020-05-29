@@ -54,6 +54,7 @@ fun requestDocument(url: String): Response {
             }
             return Document(url)
         }
+       // "file" -> {}//TODO
         else -> {
             return Error("Don't know how to handle ${uri.scheme}")
         }

@@ -11,9 +11,13 @@ import java.io.PrintWriter
 import java.net.Socket
 import java.net.URI
 
+const val DEBUG_SLOW_NETWORK = false
+
 class Gopher : Protocol() {
     private fun get(server: String, selector: String = "", port: Int = DEFAULT_PORT_GOPHER): String {
+        if (DEBUG_SLOW_NETWORK) Thread.sleep(1000)
         val socket = Socket(server, port)
+        if (DEBUG_SLOW_NETWORK) Thread.sleep(1000)
         socket.use {
             val out = PrintWriter(it.getOutputStream())
             out.use {
@@ -22,6 +26,7 @@ class Gopher : Protocol() {
                     out.print("$selector\r\n")
                     out.flush()
                     val data = input.readText()
+                    if (DEBUG_SLOW_NETWORK) Thread.sleep(1000)
                     return data
                 }
             }
