@@ -1,6 +1,6 @@
 # 2face 
 
-## Install
+## 1 Install Java
 
 You need a Java Runtime Environment.  I suggest you install OpenJDK 11 JRE.
 Alternatively you could use the JDK from Oracle, but it's a bigger download.
@@ -20,5 +20,7 @@ Follow instructions at https://adoptopenjdk.net/installation.html#
    
 ## Run
 
-    java -jar 2face.jar gopher://circumlunar.space
+Download latest release from releases section.
 
+Then:
+    java -jar 2face.jar
