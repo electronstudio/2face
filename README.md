@@ -18,9 +18,8 @@ Follow instructions at https://adoptopenjdk.net/installation.html#
 
     apt install openjdk-11-jre
    
-## Run
+## 2 Download latest release from releases section.
 
-Download latest release from releases section.
+## 3 Run
 
-Then:
     java -jar 2face.jar
