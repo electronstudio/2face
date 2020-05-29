@@ -39,16 +39,16 @@ tasks {
 
 val jar by tasks.getting(Jar::class) {
     manifest {
-        attributes["Main-Class"] = "Main"
+        attributes["Main-Class"] = "uk.co.electronstudio.gopher.Main"
     }
 }
 
 val fatJar = task("fatJar", type = Jar::class) {
     baseName = "${project.name}-fat"
     manifest {
-        attributes["Implementation-Title"] = "Gradle Jar File Example"
+        attributes["Implementation-Title"] = "2face"
         attributes["Implementation-Version"] = version
-        attributes["Main-Class"] = "Main"
+        attributes["Main-Class"] = "uk.co.electronstudio.gopher.Main"
     }
     from(configurations.runtimeClasspath.get().map({ if (it.isDirectory) it else zipTree(it) }))
     with(tasks.jar.get() as CopySpec)

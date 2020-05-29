@@ -1,7 +1,6 @@
 package uk.co.electronstudio.gopher
 
 import com.googlecode.lanterna.TextColor
-import com.googlecode.lanterna.input.KeyType
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory
 import com.googlecode.lanterna.TextColor.ANSI.*
 import com.googlecode.lanterna.gui2.MultiWindowTextGUI
@@ -10,8 +9,6 @@ import com.googlecode.lanterna.gui2.dialogs.MessageDialog
 import com.googlecode.lanterna.gui2.dialogs.MessageDialogButton
 import com.googlecode.lanterna.gui2.dialogs.TextInputDialog
 import com.googlecode.lanterna.input.KeyType.*
-import com.googlecode.lanterna.terminal.SimpleTerminalResizeListener
-import com.googlecode.lanterna.terminal.TerminalResizeListener
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.concurrent.thread
@@ -63,7 +60,7 @@ class TextUI() {
         }
 
 
-        loadPage("gopher://gemini.circumlunar.space/")
+        loadPage("gopher://circumlunar.space")
 
 
         while (true) {
@@ -153,41 +150,44 @@ class TextUI() {
     }
 
     @Volatile
-    var nextPage: Document? = null
+    var futureResponse: Response? = null
 
     fun loadPage(url: String){
         thread {
             val response = requestDocument(url)
             if (response is GopherDocument) {
-                nextPage = response
+                futureResponse = response
             } else if (response is TextDocument) {
-                nextPage = response
+                futureResponse = response
             } else if (response is Document) {
-                nextPage = response
+                futureResponse = response
+            } else if (response is Error) {
+                futureResponse = response
             } else {
-                nextPage = Document(url)
-                MessageDialog.showMessageDialog(
-                    textGUI,
-                    "Error",
-                    response.toString(),
-                    MessageDialogButton.OK
-                )
+                futureResponse = Document(url)
             }
           //  redraw()
         }
         thread {
             val spinner= listOf("/","/","-","-","\\","\\","|","|")
             var i=0
-            while(nextPage==null) {
+            while(futureResponse==null) {
                 put(spinner[i++ % spinner.size], terminalSize.columns-1, terminalSize.rows-1, BLACK, CYAN)
                 screen.refresh();
                 Thread.sleep(66)
             }
-            page = nextPage!!
-            nextPage = null
-            selectedLink = -1
-            redraw()
+            futureResponse.let {
+                if(it is Document){
+                    page = it
 
+                }else if (it is Error) {
+                    page = Document(url)
+                    page.items.add(Item(it.toString(), '3'))
+                }
+                futureResponse = null
+                selectedLink = -1
+                redraw()
+            }
         }
     }
 
@@ -211,7 +211,7 @@ class TextUI() {
     fun redraw(){
 
         scroll = scroll.coerceAtMost(page.items.size-TEXT_ROWS).coerceAtLeast(0)
-        println("redrawing $TEXT_ROWS rows $terminalSize $scroll")
+
         screen.clear()
         links.clear()
         put("0",0, 0, BLACK, CYAN)
@@ -231,12 +231,12 @@ class TextUI() {
                         shortcut++
                         links.add(line)
                     }
-                    put(line.text, 2, i + 1, GREEN, BLACK, invert)
+                    put(line.text+if(line.type=='1') "/" else "", 2, i + 1, GREEN, BLACK, invert)
                 }else {
                     if(line.text.startsWith('#')){
                         put(line.text, 0, i + 1, RED)
                     }else {
-                        put(line.text+if(line.type=='1') "/" else "", 0, i + 1)
+                        put(line.text, 0, i + 1)
                     }
                 }
             }

@@ -31,9 +31,9 @@ class Item(val text: String, val type: Char, val url: String? = null) {
 
     companion object {
         fun fromGopherLine(line: String): Item {
-            val s = line.drop(1).split('\t', limit = 4)
+            val s = line.drop(1).split('\t')
             val type = line[0]
-            val display = s[0].trim()
+            val display = s[0]
             val selector = s[1].trim()
             val hostName = s[2].trim()
             val port = s[3].trim().toInt()

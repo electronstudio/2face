@@ -11,7 +11,7 @@ import java.io.PrintWriter
 import java.net.Socket
 import java.net.URI
 
-const val DEBUG_SLOW_NETWORK = true
+const val DEBUG_SLOW_NETWORK = false
 
 class Gopher : Protocol() {
     private fun get(server: String, selector: String = "", port: Int = DEFAULT_PORT_GOPHER): String {
