@@ -7,12 +7,13 @@ import com.googlecode.lanterna.gui2.WindowBasedTextGUI
 import com.googlecode.lanterna.gui2.dialogs.TextInputDialog
 import com.googlecode.lanterna.input.KeyType.*
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory
+import java.net.URI
 import java.net.URLDecoder
 import java.util.*
 import kotlin.concurrent.thread
 
 
-class TextUI(startURL: String) {
+class TextUI(startURL: URI) {
 
     val shortcuts = "123456789abcdefghijklmnopqrstuvwxyz"
     val links: ArrayList<Item> = arrayListOf()
@@ -20,7 +21,7 @@ class TextUI(startURL: String) {
     @Volatile
     var selectedLink = -1
 
-    val history = Stack<String>()
+    val history = Stack<URI>()
 
 
     //var url = "gopher://gemini.circumlunar.space"
@@ -29,7 +30,7 @@ class TextUI(startURL: String) {
     //var url = "gopher://gemini.circumlunar.space:70/0/docs/faq.txt"
 
     @Volatile
-    var page: Document = Document("")
+    var page: Document = Document(URI(""))
 
 
     var scroll = 0
@@ -143,14 +144,14 @@ class TextUI(startURL: String) {
     }
 
     fun editURL() {
-        val input = TextInputDialog.showDialog(textGUI, "URL", "", page.url)
-        input?.let { loadPage(it) }
+        val input = TextInputDialog.showDialog(textGUI, "URL", "", page.url.toString()) // FIXME check decode needed
+        input?.let { loadPage(URI(it)) }
     }
 
     @Volatile
     var futureResponse: Response? = null
 
-    fun loadPage(url: String) {
+    fun loadPage(url: URI) {
         thread {
             try {
                 val response = requestDocument(url)
@@ -160,7 +161,7 @@ class TextUI(startURL: String) {
                     futureResponse = response
                 } else if (response is Document) {
                     futureResponse = response
-                } else if (response is Error) {
+                } else if (response is ErrorResponse) {
                     futureResponse = response
                 } else {
                     futureResponse = Document(url)
@@ -186,7 +187,7 @@ class TextUI(startURL: String) {
                 if (it is Document) {
                     page = it
 
-                } else if (it is Error) {
+                } else if (it is ErrorResponse) {
                     page = Document(url)
                     page.items.add(Item(it.toString(), '3'))
                 }
@@ -221,7 +222,8 @@ class TextUI(startURL: String) {
         screen.clear()
         links.clear()
         put("0", 0, 0, BLACK, CYAN)
-        put(URLDecoder.decode(page.url,"UTF-8"), 2, 0, CYAN, DEFAULT)
+        //put(URLDecoder.decode(page.url,"UTF-8"), 2, 0, CYAN, DEFAULT) FIXME check decode needed
+        put(URLDecoder.decode(page.url.toString(),"UTF-8"), 2, 0, CYAN, DEFAULT)
 
         var shortcut = 0
 
@@ -239,7 +241,7 @@ class TextUI(startURL: String) {
                         shortcut++
                         links.add(line)
                     }
-                    put(line.text + if (line.type == '1') "/" else "", 2, i + 1, GREEN, DEFAULT, invert)
+                    put(line.text + if (line.gopherType == '1') "/" else "", 2, i + 1, GREEN, DEFAULT, invert)
                 } else {
                     if (line.text.startsWith('#')) {
                         put(line.text, 0, i + 1, RED)

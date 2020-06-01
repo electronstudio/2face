@@ -1,7 +1,7 @@
 package uk.co.electronstudio.gopher.protocols
 
 import uk.co.electronstudio.gopher.DEFAULT_PORT_GOPHER
-import uk.co.electronstudio.gopher.Error
+import uk.co.electronstudio.gopher.ErrorResponse
 import uk.co.electronstudio.gopher.GopherDocument
 import uk.co.electronstudio.gopher.Response
 import uk.co.electronstudio.gopher.TextDocument
@@ -46,16 +46,14 @@ class Gopher : Protocol() {
           try {
         val txt = get(uri)
         if (uri.path.length < 2 || uri.path[1] == '1') {
-            println("its a gopher")
-            return GopherDocument(txt, uri.toString())
+            return GopherDocument(txt, uri)
         } else if (uri.path[1] == '0') {
-            println("its a text")
-            return TextDocument(txt, uri.toString())
+            return TextDocument(txt, uri)
         } else {
-            return Error("Unknown gopher item type")
+            return ErrorResponse("Unknown gopher item type")
         }
           } catch (e: Exception) {
-              return Error(e.toString())
+              return ErrorResponse(e.toString())
           }
     }
 }

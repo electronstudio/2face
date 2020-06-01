@@ -6,7 +6,6 @@ package uk.co.electronstudio.gopher
 import java.awt.Desktop
 
 import net.sourceforge.argparse4j.ArgumentParsers
-import net.sourceforge.argparse4j.impl.Arguments
 import net.sourceforge.argparse4j.inf.ArgumentParserException
 import net.sourceforge.argparse4j.inf.Namespace
 import uk.co.electronstudio.gopher.protocols.Gemini
@@ -24,11 +23,15 @@ fun main(args: Array<String>) {
         .nargs("?")
         .help("Gopher or Gemini URL")
 
+
+    // "gemini://gemini.circumlunar.space/"
+    // "gemini://gemini.conman.org/"
+
     try {
         val res: Namespace = parser.parseArgs(args)
-        val url = res.getString("url") ?: "gopher://gopher.floodgap.com/"
+        val url = res.getString("url") ?:"gemini://gemini.conman.org/"
         println("url is $url")
-        TextUI(url)
+        TextUI(URI(url))
     } catch (e: ArgumentParserException) {
         parser.handleError(e)
     }
@@ -56,8 +59,8 @@ fun main(args: Array<String>) {
 val gopher = Gopher()
 val gemini = Gemini()
 
-fun requestDocument(url: String): Response {
-    val uri = URI(url)
+fun requestDocument(uri: URI): Response {
+
     when (uri.scheme) {
         "gopher" -> {
             return gopher.getURI(uri)
@@ -66,18 +69,18 @@ fun requestDocument(url: String): Response {
             return gemini.getURI(uri)
         }
         "http", "https" -> {
-            println("OPEN $url")
+            println("OPEN $uri")
             val desktop = Desktop.getDesktop()
             try {
                 desktop.browse(uri)
             } catch (e: URISyntaxException) {
                 e.printStackTrace()
             }
-            return Document(url)
+            return Document(uri)
         }
        // "file" -> {}//TODO
         else -> {
-            return Error("Don't know how to handle ${uri.scheme}")
+            return ErrorResponse("Don't know how to handle ${uri.scheme}")
         }
     }
 }
