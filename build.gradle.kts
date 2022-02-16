@@ -1,7 +1,8 @@
 plugins {
     java
-    kotlin("jvm") version "1.3.72"
+    kotlin("jvm") version "1.6.10"
     application
+    id("com.github.johnrengelman.shadow") version "7.1.2"
 }
 
 application {
@@ -17,8 +18,8 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
-    testCompile("junit", "junit", "4.12")
-    implementation("com.googlecode.lanterna:lanterna:3.0.3")
+   // testCompile("junit", "junit", "4.12")
+    implementation("com.googlecode.lanterna:lanterna:3.1.1")
     implementation("net.sourceforge.argparse4j", "argparse4j", "0.8.1")
    // implementation("org.apache.commons","commons-text","1.8")
    // implementation("org.pushing-pixels:radiance-substance:2.5.1")
@@ -30,10 +31,10 @@ configure<JavaPluginConvention> {
 }
 tasks {
     compileKotlin {
-        kotlinOptions.jvmTarget = "1.8"
+        kotlinOptions.jvmTarget = "17"
     }
     compileTestKotlin {
-        kotlinOptions.jvmTarget = "1.8"
+        kotlinOptions.jvmTarget = "17"
     }
 
 
@@ -45,13 +46,13 @@ val jar by tasks.getting(Jar::class) {
     }
 }
 
-val fatJar = task("fatJar", type = Jar::class) {
-    baseName = "2face"
-    manifest {
-        attributes["Implementation-Title"] = "2face"
-        attributes["Implementation-Version"] = version
-        attributes["Main-Class"] = "uk.co.electronstudio.gopher.Main"
-    }
-    from(configurations.runtimeClasspath.get().map({ if (it.isDirectory) it else zipTree(it) }))
-    with(tasks.jar.get() as CopySpec)
-}
+//val fatJar = task("fatJar", type = Jar::class) {
+//    baseName = "2face"
+//    manifest {
+//        attributes["Implementation-Title"] = "2face"
+//        attributes["Implementation-Version"] = version
+//        attributes["Main-Class"] = "uk.co.electronstudio.gopher.Main"
+//    }
+//    from(configurations.runtimeClasspath.get().map({ if (it.isDirectory) it else zipTree(it) }))
+//    with(tasks.jar.get() as CopySpec)
+//}

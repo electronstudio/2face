@@ -24,12 +24,12 @@ fun main(args: Array<String>) {
         .help("Gopher or Gemini URL")
 
 
-    // "gemini://gemini.circumlunar.space/"
+    val default = "gemini://gemini.circumlunar.space/"
     // "gemini://gemini.conman.org/"
 
     try {
         val res: Namespace = parser.parseArgs(args)
-        val url = res.getString("url") ?:"gemini://gemini.conman.org/"
+        val url = res.getString("url") ?: default
         println("url is $url")
         TextUI(URI(url))
     } catch (e: ArgumentParserException) {

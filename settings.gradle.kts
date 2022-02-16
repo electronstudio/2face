@@ -1,2 +1,2 @@
-rootProject.name = "gopherj"
+rootProject.name = "2face"
 
