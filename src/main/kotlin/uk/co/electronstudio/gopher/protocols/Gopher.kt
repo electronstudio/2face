@@ -1,16 +1,13 @@
 package uk.co.electronstudio.gopher.protocols
 
-import uk.co.electronstudio.gopher.DEFAULT_PORT_GOPHER
-import uk.co.electronstudio.gopher.ErrorResponse
-import uk.co.electronstudio.gopher.GopherDocument
-import uk.co.electronstudio.gopher.Response
-import uk.co.electronstudio.gopher.TextDocument
+import uk.co.electronstudio.gopher.*
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.Socket
 import java.net.URI
 import java.net.URLDecoder
+import java.util.logging.Level
 
 const val DEBUG_SLOW_NETWORK = false
 
@@ -43,17 +40,19 @@ class Gopher : Protocol() {
 //        if (uri.scheme != "gopher") {
 //            return GopherError("Don't know how to handle ${uri.scheme}")
 //        }
-          try {
-        val txt = get(uri)
-        if (uri.path.length < 2 || uri.path[1] == '1') {
-            return GopherDocument(txt, uri)
-        } else if (uri.path[1] == '0') {
-            return TextDocument(txt, uri)
-        } else {
-            return ErrorResponse("Unknown gopher item type")
+        log.fine("Gopher loading: ${uri.toString()}")
+        try {
+            val txt = get(uri)
+            if (uri.path.length < 2 || uri.path[1] == '1') {
+                return GopherDocument(txt, uri)
+            } else if (uri.path[1] == '0') {
+                return TextDocument(txt, uri)
+            } else {
+                return ErrorResponse("Unknown gopher item type")
+            }
+        } catch (e: Exception) {
+            log.log(Level.SEVERE, "Error loading gopher item", e)
+            return ErrorResponse(e.toString())
         }
-          } catch (e: Exception) {
-              return ErrorResponse(e.toString())
-          }
     }
 }

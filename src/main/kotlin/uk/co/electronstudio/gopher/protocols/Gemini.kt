@@ -5,80 +5,125 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.URI
-import javax.net.ssl.SSLSocket
-import javax.net.ssl.SSLSocketFactory
+import java.security.cert.X509Certificate
+import java.util.logging.Level
+import java.util.logging.Logger
+import javax.net.ssl.*
+
+const val TLSv1_2 = "TLSv1.2"
+const val TLSv1_3 = "TLSv1.3"
 
 class Gemini : Protocol() {
+    private val SSL_PROTOCOLS = arrayOf(TLSv1_3, TLSv1_2)
+
+    private val sslSocketFactory = createInsecureSSLSocketFactory()
+
+
+    fun createInsecureSSLSocketFactory(): SSLSocketFactory {
+        //System.setProperty("javax.net.debug","all")
+        val trustAllCerts = arrayOf<TrustManager>(
+            object : X509TrustManager {
+                override fun getAcceptedIssuers(): Array<X509Certificate?> {
+                    return arrayOfNulls(0)
+                }
+
+                override fun checkClientTrusted(
+                    certs: Array<X509Certificate>, authType: String
+                ) {
+                }
+
+                override fun checkServerTrusted(
+                    certs: Array<X509Certificate>, authType: String
+                ) {
+                    log.fine("checkServerTrusted ")
+                    //log.fine(certs.joinToString { it.toString() })
+                    //log.fine("SIG: " + certs[0].signature)
+                }
+            }
+        )
+
+
+        val sslContext = SSLContext.getInstance(TLSv1_3)
+        sslContext.init(null, trustAllCerts, null)
+        HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.socketFactory)
+        return sslContext.socketFactory
+    }
+
     override fun getURI(uri: URI): Response {
+        log.fine("Gemini getURI "+uri)
         try {
+            val socket = sslSocketFactory.createSocket(
+                uri.host,
+                if (uri.port > 0) uri.port else DEFAULT_PORT_GEMINI
+            ) as SSLSocket
 
-            System.setProperty("javax.net.debug","all")
-            val protocols = arrayOf("TLSv1")
-            val cipher_suites = arrayOf("TLS_AES_128_GCM_SHA256")
+            socket.enabledProtocols = SSL_PROTOCOLS
 
-            val sslsocketfactory = SSLSocketFactory.getDefault()
+            socket.addHandshakeCompletedListener {
+                log.fine("HANDSHAKE DONE " + it.session.protocol)
+                if (it.session.protocol != TLSv1_3) {
+                    log.warning("WARNING: connected to server using TLSv1.2")
+                }
+            }
 
-
-
-            val socket = sslsocketfactory
-                .createSocket(uri.host, DEFAULT_PORT_GEMINI) as SSLSocket
-
-            println(socket.sslParameters.endpointIdentificationAlgorithm)
-            println(socket.handshakeApplicationProtocol)
-            println(socket.sslParameters.protocols.joinToString { it })
-            println(socket.sslParameters.applicationProtocols.joinToString { it })
-            println(socket.applicationProtocol)
-            socket.addHandshakeCompletedListener({println("HANDSHAKE DONE"+it)})
-
-
-//
-//            socket.enabledCipherSuites.forEach { println(it) }
-//            socket.enabledProtocols.forEach{println(it)}
-           // socket.setEnabledProtocols(protocols)
-//            socket.setEnabledCipherSuites(cipher_suites)
+            socket.startHandshake()
 
             socket.use {
                 val out = PrintWriter(it.getOutputStream())
                 out.use {
                     val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+
                     input.use {
-                        println("requesting: $uri")
+                        log.fine("requesting uri: $uri")
                         out.print("${uri}\r\n")
-                        //out.print("gemini.conman.org/\n\n\n\n")
                         out.flush()
-                        println("socket isconnected ${socket.isConnected}")
+
+
+                        //System.exit(0)
                         //while(!input.ready()){}
-                      //  val c = input.read()
-                       // println("READ CHAR $c")
+                        //  val c = input.read()
+                        // println("READ CHAR $c")
                         val status = input.readLine()
-                        println("STATUS LINE: $status")
-                        println("socket isconnected ${socket.isConnected}")
+                        log.fine("STATUS LINE: $status")
+
                         val code = status[0]
                         val code2 = status[1]
-                        val meta = if (status.length>3) {status.substring(3)} else ""
-                        when(code){
-                            '1' -> {TODO()}
+                        val meta = if (status.length > 3) {
+                            status.substring(3)
+                        } else ""
+                        when (code) {
+                            '1' -> {
+                                TODO()
+                            }
                             '2' -> {
                                 println("success, mime type $meta")
                                 val data = input.readText()
-                                if(meta.contains("text/gemini")){
+                                if (meta.contains("text/gemini")) {
                                     return GeminiDocument(data, uri)
-                                }else{
+                                } else {
                                     return TextDocument(data, uri)
                                 }
 
                             }
-                            '3' -> {TODO()}
-                            '4','5' -> {return ErrorResponse(meta)}
-                            '6' -> {TODO()}
-                            else -> {return ErrorResponse(meta)}
+                            '3' -> {
+                                TODO()
+                            }
+                            '4', '5' -> {
+                                return ErrorResponse(status)
+                            }
+                            '6' -> {
+                                TODO()
+                            }
+                            else -> {
+                                return ErrorResponse(status)
+                            }
                         }
 
                     }
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            log.log(Level.SEVERE, "ERROR LOADING $uri", e)
             return ErrorResponse(e.toString())
         }
     }

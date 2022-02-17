@@ -2,6 +2,7 @@ package uk.co.electronstudio.gopher
 
 import java.net.URI
 import java.net.URLEncoder
+import java.util.logging.Level
 
 val DEFAULT_PORT_GOPHER = 70
 val DEFAULT_PORT_GEMINI = 1965
@@ -10,12 +11,42 @@ abstract class Response {}
 
 open class Document(val url: URI) : Response() {
     val items: ArrayList<Item> = arrayListOf()
+
+    fun splitItemsIntoLines(lineWidth: Int): ArrayList<Item> {
+        val lines = arrayListOf<Item>()
+
+        items.forEach {
+            val words = it.text.split(' ')
+            var sb = StringBuilder(words[0])
+            var spaceLeft = lineWidth - words[0].length
+            for (word in words.drop(1)) {
+                val len = word.length
+                if (len + 1 > spaceLeft) {
+                    lines.add(Item(sb.toString(), it.gopherType, it.url))
+                    sb = StringBuilder(word)
+                    spaceLeft = lineWidth - len
+                }
+                else {
+                    if(sb.length > 0) {
+                        sb.append(' ')
+                        spaceLeft--
+                    }
+                    sb.append(word)
+                    spaceLeft -= (len)
+                }
+            }
+
+            lines.add(Item(sb.toString(), it.gopherType, it.url))
+        }
+        return lines
+    }
+
 }
 
 
 
 class GeminiDocument(txt: String, url: URI) : Document(url) {
-    val regex = Regex("=>\\s*((\\S+)\\s*(.*))?")
+    val regex = Regex("^=>\\s*((\\S+)\\s*(.*))?")
     init {
         txt.lines().forEach {
             val item = createItem(it)
@@ -27,7 +58,12 @@ class GeminiDocument(txt: String, url: URI) : Document(url) {
     fun createItem(line: String): Item? {
         val r = regex.find(line)
         if (r!=null){
-            val url = this.url.resolve(r.groupValues[2])
+            val url = try {
+                this.url.resolve(r.groupValues[2])
+            }catch (e: Exception){
+                log.log(Level.SEVERE, "error resolving url on line: $line", e)
+                null
+            }
             val txt = r.groupValues[3]
             //println("TXT $txt URL $url")
 
@@ -87,8 +123,24 @@ class TextDocument(txt: String,  url: URI) : Document(url) {
 }
 
 class ErrorResponse(val txt: String) : Response() {
+    val errorText = when{
+        txt.startsWith("4") -> "TEMPORARY FAILURE"
+        txt.startsWith("41") -> "TEMPORARY FAILURE: SERVER UNAVAILABLE"
+        txt.startsWith("42") -> "TEMPORARY FAILURE: CGI ERROR"
+        txt.startsWith("43") -> "TEMPORARY FAILURE: PROXY ERROR"
+        txt.startsWith("44") -> "TEMPORARY FAILURE: SLOW DOWN"
+        txt.startsWith("5") -> "PERMANENT FAILURE"
+        txt.startsWith("51") -> "PERMANENT FAILURE: NOT FOUND"
+        txt.startsWith("52") -> "PERMANENT FAILURE: GONE"
+        txt.startsWith("53") -> "PERMANENT FAILURE: PROXY REQUEST REFUSED"
+        txt.startsWith("59") -> "PERMANENT FAILURE: BAD REQUEST"
+        else -> "UNKNOWN ERROR"
+
+    }
+
     override fun toString(): String {
-        return txt
+        return errorText+" ["+txt+"]"
+
     }
 }
 
