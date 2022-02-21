@@ -3,22 +3,49 @@
 package uk.co.electronstudio.gopher
 
 
+import groovy.util.ConfigObject
+import groovy.util.ConfigSlurper
 import net.sourceforge.argparse4j.ArgumentParsers
 import net.sourceforge.argparse4j.inf.ArgumentParserException
 import net.sourceforge.argparse4j.inf.Namespace
 import uk.co.electronstudio.gopher.protocols.Gemini
 import uk.co.electronstudio.gopher.protocols.Gopher
-import java.awt.Desktop
+import uk.co.electronstudio.gopher.protocols.openWebBrowser
+import java.io.*
 import java.net.URI
-import java.net.URISyntaxException
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.logging.Handler
 import java.util.logging.Level
 import java.util.logging.Logger
+import kotlin.io.path.exists
 
-val LOG_LEVEL = Level.ALL
+
+//val LOG_LEVEL = Level.ALL
 internal val log = Logger.getLogger("2face")
 
 fun main(args: Array<String>) {
+
+    val defaultConfigFile = FileInputStream(TextUI::class.java.classLoader.getResource("config.groovy").file)
+    val userConfigFile = Paths.get(System.getProperty("user.home"),".2face.groovy")
+
+
+    if (!userConfigFile.exists()) {
+        Files.copy(defaultConfigFile, userConfigFile)
+    }
+    val configFile = userConfigFile.toFile()
+    val config: ConfigObject = ConfigSlurper().parse(configFile.toURI().toURL())
+
+    val LOG_LEVEL = config.getProperty("logLevel") as Level
+
+//    if(!configFile.exists()) {
+//        val fos = FileOutputStream(configFile);
+//        fos.write(t.getBytes());
+//        fos.flush();
+//        fos.close();
+//    }
+
 
     val root: Logger = Logger.getLogger("")
     val handlers: Array<Handler> = root.getHandlers()
@@ -40,8 +67,8 @@ fun main(args: Array<String>) {
     try {
         val res: Namespace = parser.parseArgs(args)
         val url = res.getString("url") ?: default
-        println("url is $url")
-        TextUI(URI(url))
+        log.info("url is $url")
+        TextUI(URI(url), config)
     } catch (e: ArgumentParserException) {
         parser.handleError(e)
     }
@@ -80,12 +107,7 @@ fun requestDocument(uri: URI): Response {
         }
         "http", "https" -> {
             log.fine("OPEN $uri")
-            val desktop = Desktop.getDesktop()
-            try {
-                desktop.browse(uri)
-            } catch (e: URISyntaxException) {
-                log.log(Level.SEVERE, "Error opening $uri", e)
-            }
+            openWebBrowser(uri)
             return Document(uri)
         }
        // "file" -> {}//TODO

@@ -6,24 +6,25 @@ import com.googlecode.lanterna.gui2.MultiWindowTextGUI
 import com.googlecode.lanterna.gui2.WindowBasedTextGUI
 import com.googlecode.lanterna.gui2.dialogs.TextInputDialog
 import com.googlecode.lanterna.input.KeyType.*
-import com.googlecode.lanterna.screen.Screen
 import com.googlecode.lanterna.screen.TerminalScreen
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory
-import com.googlecode.lanterna.terminal.Terminal
-import com.googlecode.lanterna.terminal.swing.SwingTerminal
 import com.googlecode.lanterna.terminal.swing.SwingTerminalFrame
+import groovy.util.ConfigObject
+import groovy.util.ConfigSlurper
+import java.io.File
 import java.net.URI
 import java.net.URLDecoder
 import java.util.*
 import java.util.logging.Level
+import kotlin.collections.ArrayList
 import kotlin.concurrent.thread
 
 
-class TextUI(startURL: URI) {
+class TextUI(startURL: URI, config: ConfigObject) {
 
-    val shortcuts = "123456789abcdefghijklmnopqrstuvwxyz"
+    //val shortcuts = "123456789abcdefghijklmnopqrstuvwxyz"
 
-    val urlLineColorForeground = CYAN
+    //val urlLineColorForeground = CYAN
     val urlLineColorBackground = BLACK
     val statusLineColorForeground = CYAN
     val statusLineColorBackground = BLACK
@@ -37,6 +38,13 @@ class TextUI(startURL: URI) {
     val heading3ColorBackground = BLACK
     val textColorForeground = WHITE
     val textColorBackground = BLACK
+    //val urlKey = '0'
+    val textMode = false
+
+
+    val keys = config["keys"] as Map<String, String>
+    val colors = config["colors"] as Map<String, ArrayList<TextColor>>
+
 
     val links: ArrayList<Item> = arrayListOf()
 
@@ -52,12 +60,15 @@ class TextUI(startURL: URI) {
     //var url = "gopher://gemini.circumlunar.space:70/0/docs/faq.txt"
 
     @Volatile
-    var page: Document = Document(URI(""))
+    var page: Document = GeminiDocument("""
+        # Welcome to 2face, a Gemini/Gopher client written in Kotlin.
+    """.trimIndent(), URI("")
+    )
 
 
     var scroll = 0
     val terminalFactory = DefaultTerminalFactory()
-    val terminal = terminalFactory.createTerminal()
+    val terminal = terminalFactory.setForceTextTerminal(textMode).createTerminal()
     val screen = TerminalScreen(terminal)
     val textGraphics = screen.newTextGraphics()
 
@@ -67,7 +78,6 @@ class TextUI(startURL: URI) {
     var TEXT_ROWS = terminalSize.rows - 3
 
     init {
-
         screen.startScreen()
         screen.cursorPosition = null
 
@@ -114,10 +124,10 @@ class TextUI(startURL: URI) {
 
 
                 Character -> {
-                    val shortcut = shortcuts.indexOf(key.character)
+                    val shortcut = keys["shortcuts"]!!.indexOf(key.character)
                     if (key.character == ' ') {
                         scroll += TEXT_ROWS
-                    } else if (key.character == '0') {
+                    } else if (key.character == keys["url"]?.first() ) {
                         editURL()
                     } else if (shortcut > -1) {
                         val link = links.getOrNull(shortcut)
@@ -329,9 +339,9 @@ class TextUI(startURL: URI) {
 
         screen.clear()
         links.clear()
-        put("0", 0, 0, urlLineColorBackground, urlLineColorForeground)
+        put(keys["url"]!!, 0, 0, urlLineColorBackground, colors["urlLine"]!![0])
         //put(URLDecoder.decode(page.url,"UTF-8"), 2, 0, CYAN, DEFAULT) FIXME check decode needed
-        put(URLDecoder.decode(page.url.toString(),"UTF-8"), 2, 0, urlLineColorForeground, urlLineColorBackground)
+        put(URLDecoder.decode(page.url.toString(),"UTF-8"), 2, 0, colors["urlLine"]!![0], urlLineColorBackground)
 
         var shortcut = 0
 
@@ -345,9 +355,9 @@ class TextUI(startURL: URI) {
                 //println(line.url)
                 if (line.url != null) {
                     var invert = false
-                    if (shortcut < shortcuts.length) {
+                    if (shortcut < keys["shortcuts"]!!.length) {
                         invert = (shortcut == selectedLink)
-                        put(shortcuts[shortcut].toString(), 0, i + 1, linkColorBackground, linkColorForeground)
+                        put(keys["shortcuts"]!![shortcut].toString(), 0, i + 1, linkColorBackground, linkColorForeground)
                         shortcut++
                         links.add(line)
                     }
@@ -371,7 +381,7 @@ class TextUI(startURL: URI) {
 
         if (scroll + TEXT_ROWS < lines.size) {
             val s = "[$current/$pages]"
-            put(s, 0, terminalSize.rows - 1, urlLineColorForeground, urlLineColorBackground)
+            put(s, 0, terminalSize.rows - 1, statusLineColorForeground, statusLineColorBackground)
             put("SPACE", s.length + 1, terminalSize.rows - 1, statusLineColorBackground, statusLineColorForeground)
         } else {
             put("[$pages/$pages]", 0, terminalSize.rows - 1, statusLineColorForeground, statusLineColorBackground)

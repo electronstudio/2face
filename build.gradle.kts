@@ -21,6 +21,7 @@ dependencies {
    // testCompile("junit", "junit", "4.12")
     implementation("com.googlecode.lanterna:lanterna:3.1.1")
     implementation("net.sourceforge.argparse4j", "argparse4j", "0.8.1")
+    implementation("org.codehaus.groovy:groovy-all:3.0.9")
    // implementation("org.apache.commons","commons-text","1.8")
    // implementation("org.pushing-pixels:radiance-substance:2.5.1")
 
