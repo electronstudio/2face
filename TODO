@@ -1,0 +1,6 @@
+error popups
+only one background loading thread at a time.  choosing new link cancels loading of old one.
+more threads can be used for caching pages, but dont actually navigate to them.
+hmm.
+configurable homepage
+split into separate projects for core/text/graphical

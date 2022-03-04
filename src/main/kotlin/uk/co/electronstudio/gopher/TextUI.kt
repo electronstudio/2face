@@ -6,8 +6,12 @@ import com.googlecode.lanterna.gui2.MultiWindowTextGUI
 import com.googlecode.lanterna.gui2.WindowBasedTextGUI
 import com.googlecode.lanterna.gui2.dialogs.TextInputDialog
 import com.googlecode.lanterna.input.KeyType.*
+import com.googlecode.lanterna.input.MouseAction
+import com.googlecode.lanterna.input.MouseActionType
 import com.googlecode.lanterna.screen.TerminalScreen
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory
+import com.googlecode.lanterna.terminal.ExtendedTerminal
+import com.googlecode.lanterna.terminal.MouseCaptureMode
 import com.googlecode.lanterna.terminal.swing.SwingTerminalFrame
 import groovy.util.ConfigObject
 import groovy.util.ConfigSlurper
@@ -16,34 +20,21 @@ import java.net.URI
 import java.net.URLDecoder
 import java.util.*
 import java.util.logging.Level
+import javax.accessibility.AccessibleAction.CLICK
 import kotlin.collections.ArrayList
 import kotlin.concurrent.thread
 
 
 class TextUI(startURL: URI, config: ConfigObject) {
 
-    //val shortcuts = "123456789abcdefghijklmnopqrstuvwxyz"
 
-    //val urlLineColorForeground = CYAN
-    val urlLineColorBackground = BLACK
-    val statusLineColorForeground = CYAN
-    val statusLineColorBackground = BLACK
-    val linkColorForeground = GREEN
-    val linkColorBackground = BLACK
-    val heading1ColorForeground = RED
-    val heading1ColorBackground = BLACK
-    val heading2ColorForeground = RED
-    val heading2ColorBackground = BLACK
-    val heading3ColorForeground = RED
-    val heading3ColorBackground = BLACK
-    val textColorForeground = WHITE
-    val textColorBackground = BLACK
-    //val urlKey = '0'
-    val textMode = false
 
 
     val keys = config["keys"] as Map<String, String>
     val colors = config["colors"] as Map<String, ArrayList<TextColor>>
+
+
+
 
 
     val links: ArrayList<Item> = arrayListOf()
@@ -68,7 +59,7 @@ class TextUI(startURL: URI, config: ConfigObject) {
 
     var scroll = 0
     val terminalFactory = DefaultTerminalFactory()
-    val terminal = terminalFactory.setForceTextTerminal(textMode).createTerminal()
+    val terminal = terminalFactory.setForceTextTerminal(config["forceTextMode"] as Boolean).createTerminal()
     val screen = TerminalScreen(terminal)
     val textGraphics = screen.newTextGraphics()
 
@@ -92,10 +83,20 @@ class TextUI(startURL: URI, config: ConfigObject) {
             }
         }
 
+
+
         if (terminal is SwingTerminalFrame) {
             terminal.defaultCloseOperation = SwingTerminalFrame.EXIT_ON_CLOSE
         }
-        loadPage(startURL)
+
+        if (terminal is ExtendedTerminal) {
+            log.info("EXTENDED TERMINAL")
+            terminal.setTitle("2face")
+            terminal.setMouseCaptureMode(MouseCaptureMode.CLICK_RELEASE_DRAG_MOVE)
+        }
+
+
+       loadPage(startURL)
 
 
         while (true) {
@@ -171,8 +172,20 @@ class TextUI(startURL: URI, config: ConfigObject) {
                 F18 -> {}
                 F19 -> {}
                 Unknown -> {}
-                CursorLocation -> {}
-                MouseEvent -> {}
+                CursorLocation -> {
+
+                }
+                MouseEvent -> {
+                    val mouseAction = key as MouseAction
+                    if (mouseAction.actionType == MouseActionType.SCROLL_UP){
+                        scroll--
+                    }else if (mouseAction.actionType == MouseActionType.SCROLL_DOWN) {
+                        scroll++
+                    }else if (mouseAction.actionType == MouseActionType.CLICK_DOWN) {
+                        val link = links.getOrNull(mouseAction.position.row)
+
+                    }
+                }
                 EOF -> {}
             }
 
@@ -189,6 +202,8 @@ class TextUI(startURL: URI, config: ConfigObject) {
 
     fun loadPage(url: URI) {
         log.info("Loading page: $url")
+       
+
         thread {
             try {
                 val response = requestDocument(url)
@@ -217,7 +232,7 @@ class TextUI(startURL: URI, config: ConfigObject) {
             val spinner = listOf("/", "/", "-", "-", "\\", "\\", "|", "|")
             var i = 0
             while (futureResponse == null) {
-                put(spinner[i++ % spinner.size], terminalSize.columns - 1, terminalSize.rows - 1, statusLineColorBackground, statusLineColorForeground)
+                put(spinner[i++ % spinner.size], terminalSize.columns - 1, terminalSize.rows - 1, colors["statusLine"]!![1], colors["statusLine"]!![0])
                 screen.refresh();
                 Thread.sleep(66)
             }
@@ -339,9 +354,9 @@ class TextUI(startURL: URI, config: ConfigObject) {
 
         screen.clear()
         links.clear()
-        put(keys["url"]!!, 0, 0, urlLineColorBackground, colors["urlLine"]!![0])
+        put(keys["url"]!!, 0, 0, colors["urlLine"]!![1], colors["urlLine"]!![0])
         //put(URLDecoder.decode(page.url,"UTF-8"), 2, 0, CYAN, DEFAULT) FIXME check decode needed
-        put(URLDecoder.decode(page.url.toString(),"UTF-8"), 2, 0, colors["urlLine"]!![0], urlLineColorBackground)
+        put(URLDecoder.decode(page.url.toString(),"UTF-8"), 2, 0, colors["urlLine"]!![0], colors["urlLine"]!![1])
 
         var shortcut = 0
 
@@ -357,18 +372,18 @@ class TextUI(startURL: URI, config: ConfigObject) {
                     var invert = false
                     if (shortcut < keys["shortcuts"]!!.length) {
                         invert = (shortcut == selectedLink)
-                        put(keys["shortcuts"]!![shortcut].toString(), 0, i + 1, linkColorBackground, linkColorForeground)
+                        put(keys["shortcuts"]!![shortcut].toString(), 0, i + 1, colors["link"]!![1], colors["link"]!![0])
                         shortcut++
                         links.add(line)
                     }
-                    put(line.text + if (line.gopherType == '1') "/" else "", 2, i + 1, linkColorForeground, linkColorBackground, invert)
+                    put(line.text + if (line.gopherType == '1') "/" else "", 2, i + 1, colors["link"]!![0], colors["heading1"]!![1], invert)
                 } else {
                     val color = when {
 
-                        line.text.startsWith("###") -> heading3ColorForeground
-                        line.text.startsWith("##") -> heading2ColorForeground
-                        line.text.startsWith('#') -> heading1ColorForeground
-                        else -> textColorForeground
+                        line.text.startsWith("###") -> colors["heading3"]!![0]
+                        line.text.startsWith("##") -> colors["heading2"]!![0]
+                        line.text.startsWith('#') -> colors["heading1"]!![0]
+                        else -> colors["text"]!![0]
                     }
 
                     put(line.text, 0, i + 1, color)
@@ -381,10 +396,10 @@ class TextUI(startURL: URI, config: ConfigObject) {
 
         if (scroll + TEXT_ROWS < lines.size) {
             val s = "[$current/$pages]"
-            put(s, 0, terminalSize.rows - 1, statusLineColorForeground, statusLineColorBackground)
-            put("SPACE", s.length + 1, terminalSize.rows - 1, statusLineColorBackground, statusLineColorForeground)
+            put(s, 0, terminalSize.rows - 1, colors["statusLine"]!![0], colors["statusLine"]!![1])
+            put("SPACE", s.length + 1, terminalSize.rows - 1, colors["statusLine"]!![1], colors["statusLine"]!![0])
         } else {
-            put("[$pages/$pages]", 0, terminalSize.rows - 1, statusLineColorForeground, statusLineColorBackground)
+            put("[$pages/$pages]", 0, terminalSize.rows - 1, colors["statusLine"]!![0], colors["statusLine"]!![1])
         }
 
 

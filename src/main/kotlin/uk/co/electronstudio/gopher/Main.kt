@@ -27,7 +27,10 @@ internal val log = Logger.getLogger("2face")
 
 fun main(args: Array<String>) {
 
-    val defaultConfigFile = FileInputStream(TextUI::class.java.classLoader.getResource("config.groovy").file)
+    //composeMain()
+
+
+    val defaultConfigFile = TextUI::class.java.classLoader.getResourceAsStream("config.groovy")
     val userConfigFile = Paths.get(System.getProperty("user.home"),".2face.groovy")
 
 

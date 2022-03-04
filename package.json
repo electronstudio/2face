@@ -1,0 +1,30 @@
+{
+    "bin": {
+        "2face": "jdeploy-bundle/jdeploy.js"
+    },
+    "author": "paradroid",
+    "description": "Gopher and Gemini client",
+    "main": "index.js",
+    "preferGlobal": true,
+    "repository": "",
+    "version": "1.0.2",
+    "jdeploy": {
+        "jdk": false,
+        "javaVersion": "17",
+        "jar": "build/libs/2face-all.jar",
+        "javafx": false,
+        "title": "2face"
+    },
+    "dependencies": {
+        "njre": "^0.2.0",
+        "shelljs": "^0.8.4"
+    },
+    "license": "GPLv3",
+    "name": "2face",
+    "files": [
+        "jdeploy-bundle"
+    ],
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    }
+}

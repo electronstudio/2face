@@ -1,8 +1,11 @@
+import org.jetbrains.compose.compose
+
 plugins {
     java
     kotlin("jvm") version "1.6.10"
     application
     id("com.github.johnrengelman.shadow") version "7.1.2"
+    id("org.jetbrains.compose") version "1.0.1"
 }
 
 application {
@@ -13,6 +16,7 @@ group = "uk.co.electronstudio"
 version = ""
 
 repositories {
+    google()
     mavenCentral()
 }
 
@@ -22,7 +26,12 @@ dependencies {
     implementation("com.googlecode.lanterna:lanterna:3.1.1")
     implementation("net.sourceforge.argparse4j", "argparse4j", "0.8.1")
     implementation("org.codehaus.groovy:groovy-all:3.0.9")
-   // implementation("org.apache.commons","commons-text","1.8")
+    implementation(compose.desktop.windows_x64)
+    implementation(compose.desktop.linux_x64)
+    implementation("com.halilibo.compose-richtext:richtext-commonmark:0.11.0")
+    implementation("com.halilibo.compose-richtext:richtext-ui-material:0.11.0")
+
+    // implementation("org.apache.commons","commons-text","1.8")
    // implementation("org.pushing-pixels:radiance-substance:2.5.1")
 
 }
