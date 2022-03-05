@@ -1,5 +1,6 @@
 package uk.co.electronstudio.gopher
 
+import com.googlecode.lanterna.SGR
 import com.googlecode.lanterna.TextColor
 import com.googlecode.lanterna.TextColor.ANSI.*
 import com.googlecode.lanterna.gui2.MultiWindowTextGUI
@@ -15,6 +16,7 @@ import com.googlecode.lanterna.terminal.MouseCaptureMode
 import com.googlecode.lanterna.terminal.swing.SwingTerminalFrame
 import groovy.util.ConfigObject
 import groovy.util.ConfigSlurper
+import java.awt.event.MouseEvent.MOUSE_CLICKED
 import java.io.File
 import java.net.URI
 import java.net.URLDecoder
@@ -28,16 +30,12 @@ import kotlin.concurrent.thread
 class TextUI(startURL: URI, config: ConfigObject) {
 
 
-
-
     val keys = config["keys"] as Map<String, String>
     val colors = config["colors"] as Map<String, ArrayList<TextColor>>
 
 
-
-
-
     val links: ArrayList<Item> = arrayListOf()
+    val lineToLinkMapping = mutableMapOf<Int, Item>()
 
     @Volatile
     var selectedLink = -1
@@ -51,7 +49,8 @@ class TextUI(startURL: URI, config: ConfigObject) {
     //var url = "gopher://gemini.circumlunar.space:70/0/docs/faq.txt"
 
     @Volatile
-    var page: Document = GeminiDocument("""
+    var page: Document = GeminiDocument(
+        """
         # Welcome to 2face, a Gemini/Gopher client written in Kotlin.
     """.trimIndent(), URI("")
     )
@@ -69,6 +68,7 @@ class TextUI(startURL: URI, config: ConfigObject) {
     var TEXT_ROWS = terminalSize.rows - 3
 
     init {
+        //println(colors["urlLine"]?.get(2))
         screen.startScreen()
         screen.cursorPosition = null
 
@@ -96,7 +96,7 @@ class TextUI(startURL: URI, config: ConfigObject) {
         }
 
 
-       loadPage(startURL)
+        loadPage(startURL)
 
 
         while (true) {
@@ -128,18 +128,12 @@ class TextUI(startURL: URI, config: ConfigObject) {
                     val shortcut = keys["shortcuts"]!!.indexOf(key.character)
                     if (key.character == ' ') {
                         scroll += TEXT_ROWS
-                    } else if (key.character == keys["url"]?.first() ) {
+                    } else if (key.character == keys["url"]?.first()) {
                         editURL()
                     } else if (shortcut > -1) {
                         val link = links.getOrNull(shortcut)
-
-
-                        link?.url?.let {
-                            selectedLink = shortcut
-                            redraw()
-                            history.push(page.url)
-                            loadPage(it)
-                        }
+                        selectedLink = shortcut
+                        openLink(link)
                     }
                 }
                 Escape -> {}
@@ -177,18 +171,40 @@ class TextUI(startURL: URI, config: ConfigObject) {
                 }
                 MouseEvent -> {
                     val mouseAction = key as MouseAction
-                    if (mouseAction.actionType == MouseActionType.SCROLL_UP){
-                        scroll--
-                    }else if (mouseAction.actionType == MouseActionType.SCROLL_DOWN) {
-                        scroll++
-                    }else if (mouseAction.actionType == MouseActionType.CLICK_DOWN) {
-                        val link = links.getOrNull(mouseAction.position.row)
+                    when (mouseAction.actionType!!) {
+                        MouseActionType.SCROLL_UP -> {
+                            scroll--
+                        }
+                        MouseActionType.SCROLL_DOWN -> {
+                            scroll++
+                        }
+                        MouseActionType.CLICK_DOWN -> {
+                            val link = lineToLinkMapping[mouseAction.position.row]
+                            selectedLink = links.indexOf(link)
+                            openLink(link)
+                        }
+                        MouseActionType.CLICK_RELEASE -> {}
 
+                        MouseActionType.DRAG -> {}
+
+                        MouseActionType.MOVE -> {
+                            //System.exit(0)
+                            val link = lineToLinkMapping[mouseAction.position.row]
+                            selectedLink = links.indexOf(link)
+                        }
                     }
                 }
                 EOF -> {}
             }
 
+        }
+    }
+
+    private fun openLink(link: Item?) {
+        link?.url?.let {
+            redraw()
+            history.push(page.url)
+            loadPage(it)
         }
     }
 
@@ -202,7 +218,7 @@ class TextUI(startURL: URI, config: ConfigObject) {
 
     fun loadPage(url: URI) {
         log.info("Loading page: $url")
-       
+
 
         thread {
             try {
@@ -232,7 +248,13 @@ class TextUI(startURL: URI, config: ConfigObject) {
             val spinner = listOf("/", "/", "-", "-", "\\", "\\", "|", "|")
             var i = 0
             while (futureResponse == null) {
-                put(spinner[i++ % spinner.size], terminalSize.columns - 1, terminalSize.rows - 1, colors["statusLine"]!![1], colors["statusLine"]!![0])
+                put(
+                    spinner[i++ % spinner.size],
+                    terminalSize.columns - 1,
+                    terminalSize.rows - 1,
+                    colors["statusLine"]!![1],
+                    colors["statusLine"]!![0]
+                )
                 screen.refresh();
                 Thread.sleep(66)
             }
@@ -254,16 +276,31 @@ class TextUI(startURL: URI, config: ConfigObject) {
     @Synchronized
     fun put(
         txt: String, column: Int = 0, row: Int = 0,
-        foreground: TextColor = WHITE, background: TextColor = DEFAULT, invert: Boolean = false
+        foreground: TextColor = WHITE, background: TextColor = DEFAULT,
+        modifier: SGR? = null
+        //invert: Boolean = false
     ) {
-        if (invert) {
-            textGraphics.foregroundColor = background
-            textGraphics.backgroundColor = foreground
+        //     if (invert) {
+        //         textGraphics.foregroundColor = background
+        //         textGraphics.backgroundColor = foreground
+        //     } else {
+        textGraphics.foregroundColor = foreground
+        textGraphics.backgroundColor = background
+        //     }
+        textGraphics.drawLine(column, row, terminalSize.columns - 1, row, ' ')
+
+        if (modifier != null) {
+            textGraphics.putString(column, row, txt, modifier)
         } else {
-            textGraphics.foregroundColor = foreground
-            textGraphics.backgroundColor = background
+            textGraphics.putString(column, row, txt)
         }
-        textGraphics.putString(column, row, txt)
+    }
+
+    fun put(
+        txt: String, column: Int = 0, row: Int = 0,
+        colors: ArrayList<TextColor>
+    ) {
+        put(txt, column, row, colors[0], colors[1])
     }
 
 
@@ -341,6 +378,7 @@ class TextUI(startURL: URI, config: ConfigObject) {
 //        screen.refresh();
 //    }
 
+
     @Synchronized
     fun redraw() {
 
@@ -350,15 +388,17 @@ class TextUI(startURL: URI, config: ConfigObject) {
 
 
         val lines = page.splitItemsIntoLines(screen.terminalSize.columns)
-        scroll = scroll.coerceAtMost(lines.size - TEXT_ROWS).coerceAtLeast(0)
+        scroll = scroll.coerceAtMost(lines.size - TEXT_ROWS - 1).coerceAtLeast(0)
 
         screen.clear()
         links.clear()
-        put(keys["url"]!!, 0, 0, colors["urlLine"]!![1], colors["urlLine"]!![0])
+        lineToLinkMapping.clear()
+        put(keys["url"]!!, 0, 0, colors["selected"]!![0], colors["selected"]!![1])
         //put(URLDecoder.decode(page.url,"UTF-8"), 2, 0, CYAN, DEFAULT) FIXME check decode needed
-        put(URLDecoder.decode(page.url.toString(),"UTF-8"), 2, 0, colors["urlLine"]!![0], colors["urlLine"]!![1])
+        put(URLDecoder.decode(page.url.toString(), "UTF-8"), 2, 0, colors["urlLine"]!![0], colors["urlLine"]!![1], SGR.ITALIC)
 
         var shortcut = 0
+
 
 
 
@@ -367,16 +407,29 @@ class TextUI(startURL: URI, config: ConfigObject) {
 
 
             line?.let {
-                //println(line.url)
+                val row = i + 1
                 if (line.url != null) {
-                    var invert = false
+                    var selected = false
                     if (shortcut < keys["shortcuts"]!!.length) {
-                        invert = (shortcut == selectedLink)
-                        put(keys["shortcuts"]!![shortcut].toString(), 0, i + 1, colors["link"]!![1], colors["link"]!![0])
+                        selected = (shortcut == selectedLink)
+                        put(
+                            keys["shortcuts"]!![shortcut].toString(),
+                            0,
+                            row,
+                            colors["selected"]!![0],
+                            colors["selected"]!![1]
+                        )
                         shortcut++
                         links.add(line)
+                        lineToLinkMapping[row] = line
                     }
-                    put(line.text + if (line.gopherType == '1') "/" else "", 2, i + 1, colors["link"]!![0], colors["heading1"]!![1], invert)
+                    put(
+                        line.text + if (line.gopherType == '1') "/" else "", 2, row, colors[if (selected) {
+                            "selected"
+                        } else {
+                            "link"
+                        }]!!
+                    )
                 } else {
                     val color = when {
 
@@ -386,7 +439,19 @@ class TextUI(startURL: URI, config: ConfigObject) {
                         else -> colors["text"]!![0]
                     }
 
-                    put(line.text, 0, i + 1, color)
+                    val color1 = when {
+
+                        line.text.startsWith("###") -> colors["heading3"]!![1]
+                        line.text.startsWith("##") -> colors["heading2"]!![1]
+                        line.text.startsWith('#') -> colors["heading1"]!![1]
+                        else -> colors["text"]!![1]
+                    }
+                    val modifier = when {
+                        line.text.startsWith('#') -> SGR.BOLD
+                        else -> null
+                    }
+                    put(line.text, 0, row, color, color1, modifier)
+
                 }
             }
         }
@@ -394,10 +459,12 @@ class TextUI(startURL: URI, config: ConfigObject) {
         val pages = Math.ceil(lines.size.toDouble() / TEXT_ROWS).toInt()
         val current = ((scroll.toDouble() / TEXT_ROWS) + 1).toInt()
 
-        if (scroll + TEXT_ROWS < lines.size) {
+        if (scroll + TEXT_ROWS < lines.size - 1) {
             val s = "[$current/$pages]"
             put(s, 0, terminalSize.rows - 1, colors["statusLine"]!![0], colors["statusLine"]!![1])
-            put("SPACE", s.length + 1, terminalSize.rows - 1, colors["statusLine"]!![1], colors["statusLine"]!![0])
+            put("SPACE", s.length + 1, terminalSize.rows - 1, colors["selected"]!![0], colors["selected"]!![1])
+            put(" ", s.length + 6, terminalSize.rows - 1, colors["statusLine"]!![0], colors["statusLine"]!![1])
+
         } else {
             put("[$pages/$pages]", 0, terminalSize.rows - 1, colors["statusLine"]!![0], colors["statusLine"]!![1])
         }

@@ -4,3 +4,6 @@ more threads can be used for caching pages, but dont actually navigate to them.
 hmm.
 configurable homepage
 split into separate projects for core/text/graphical
+make bold/italic/underline configurable
+parse ** in gemtext
+parse bullet lists

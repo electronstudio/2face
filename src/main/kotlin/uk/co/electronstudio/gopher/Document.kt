@@ -109,10 +109,6 @@ class Item(val text: String, val gopherType: Char = '0', val url: URI? = null) {
 
 
 
-    companion object {
-
-
-    }
 }
 
 

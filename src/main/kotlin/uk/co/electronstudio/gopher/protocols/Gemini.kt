@@ -96,7 +96,7 @@ class Gemini : Protocol() {
                                 TODO()
                             }
                             '2' -> {
-                                println("success, mime type $meta")
+                                log.fine("success, mime type $meta")
                                 val data = input.readText()
                                 if (meta.contains("text/gemini")) {
                                     return GeminiDocument(data, uri)
@@ -106,7 +106,8 @@ class Gemini : Protocol() {
 
                             }
                             '3' -> {
-                                TODO()
+                                log.fine("redirecting to $meta")
+                                return getURI(URI(meta))
                             }
                             '4', '5' -> {
                                 return ErrorResponse(status)
