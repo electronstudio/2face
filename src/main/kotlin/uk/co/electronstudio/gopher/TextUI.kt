@@ -268,6 +268,7 @@ class TextUI(startURL: URI, config: ConfigObject) {
                 }
                 futureResponse = null
                 selectedLink = -1
+                scroll = 0
                 redraw()
             }
         }
@@ -395,7 +396,14 @@ class TextUI(startURL: URI, config: ConfigObject) {
         lineToLinkMapping.clear()
         put(keys["url"]!!, 0, 0, colors["selected"]!![0], colors["selected"]!![1])
         //put(URLDecoder.decode(page.url,"UTF-8"), 2, 0, CYAN, DEFAULT) FIXME check decode needed
-        put(URLDecoder.decode(page.url.toString(), "UTF-8"), 2, 0, colors["urlLine"]!![0], colors["urlLine"]!![1], SGR.ITALIC)
+        put(
+            URLDecoder.decode(page.url.toString(), "UTF-8"),
+            2,
+            0,
+            colors["urlLine"]!![0],
+            colors["urlLine"]!![1],
+            SGR.ITALIC
+        )
 
         var shortcut = 0
 
@@ -431,23 +439,33 @@ class TextUI(startURL: URI, config: ConfigObject) {
                         }]!!
                     )
                 } else {
-                    val color = when {
+                    val color = if (line.preformat) {
+                        colors["preformat"]!![0]
+                    } else {
+                        when {
 
-                        line.text.startsWith("###") -> colors["heading3"]!![0]
-                        line.text.startsWith("##") -> colors["heading2"]!![0]
-                        line.text.startsWith('#') -> colors["heading1"]!![0]
-                        else -> colors["text"]!![0]
+                            line.text.startsWith("###") -> colors["heading3"]!![0]
+                            line.text.startsWith("##") -> colors["heading2"]!![0]
+                            line.text.startsWith('#') -> colors["heading1"]!![0]
+                            line.text.startsWith('>') -> colors["quote"]!![0]
+                            else -> colors["text"]!![0]
+                        }
                     }
-
-                    val color1 = when {
-
-                        line.text.startsWith("###") -> colors["heading3"]!![1]
-                        line.text.startsWith("##") -> colors["heading2"]!![1]
-                        line.text.startsWith('#') -> colors["heading1"]!![1]
-                        else -> colors["text"]!![1]
-                    }
+                    val color1 =
+                        if (line.preformat) {
+                            colors["preformat"]!![1]
+                        } else {
+                            when {
+                                line.text.startsWith("###") -> colors["heading3"]!![1]
+                                line.text.startsWith("##") -> colors["heading2"]!![1]
+                                line.text.startsWith('#') -> colors["heading1"]!![1]
+                                line.text.startsWith('>') -> colors["quote"]!![1]
+                                else -> colors["text"]!![1]
+                            }
+                        }
                     val modifier = when {
-                        line.text.startsWith('#') -> SGR.BOLD
+                        line.text.startsWith('#') && !line.preformat-> SGR.BOLD
+                        line.text.startsWith('>') && !line.preformat-> SGR.ITALIC
                         else -> null
                     }
                     put(line.text, 0, row, color, color1, modifier)

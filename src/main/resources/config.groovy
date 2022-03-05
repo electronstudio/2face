@@ -19,6 +19,8 @@ colors {
     heading1 = [ANSI.RED, ANSI.DEFAULT]
     heading2 = [ANSI.RED, ANSI.DEFAULT]
     heading3 = [ANSI.RED, ANSI.DEFAULT]
+    preformat = [ANSI.BLUE_BRIGHT, ANSI.DEFAULT]
+    quote = [ANSI.MAGENTA, ANSI.DEFAULT]
     text = [ANSI.DEFAULT, ANSI.DEFAULT]
 }
 

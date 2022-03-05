@@ -16,27 +16,30 @@ open class Document(val url: URI) : Response() {
         val lines = arrayListOf<Item>()
 
         items.forEach {
-            val words = it.text.split(' ')
-            var sb = StringBuilder(words[0])
-            var spaceLeft = lineWidth - words[0].length
-            for (word in words.drop(1)) {
-                val len = word.length
-                if (len + 1 > spaceLeft) {
-                    lines.add(Item(sb.toString(), it.gopherType, it.url))
-                    sb = StringBuilder(word)
-                    spaceLeft = lineWidth - len
-                }
-                else {
-                    if(sb.length > 0) {
-                        sb.append(' ')
-                        spaceLeft--
+            if (it.preformat) {
+                lines.add(Item(it.text, it.gopherType, it.url, it.preformat))
+            } else {
+                val words = it.text.split(' ')
+                var sb = StringBuilder(words[0])
+                var spaceLeft = lineWidth - words[0].length
+                for (word in words.drop(1)) {
+                    val len = word.length
+                    if (len + 1 > spaceLeft) {
+                        lines.add(Item(sb.toString(), it.gopherType, it.url))
+                        sb = StringBuilder(word)
+                        spaceLeft = lineWidth - len
+                    } else {
+                        if (sb.length > 0) {
+                            sb.append(' ')
+                            spaceLeft--
+                        }
+                        sb.append(word)
+                        spaceLeft -= (len)
                     }
-                    sb.append(word)
-                    spaceLeft -= (len)
                 }
-            }
 
-            lines.add(Item(sb.toString(), it.gopherType, it.url))
+                lines.add(Item(sb.toString(), it.gopherType, it.url, it.preformat))
+            }
         }
         return lines
     }
@@ -44,44 +47,44 @@ open class Document(val url: URI) : Response() {
 }
 
 
-
 class GeminiDocument(txt: String, url: URI) : Document(url) {
     val regex = Regex("^=>\\s*((\\S+)\\s*(.*))?")
+
     init {
         txt.lines().forEach {
             val item = createItem(it)
-            item?.let {items.add(it)}
+            item?.let { items.add(it) }
         }
     }
-    var preformat = false
 
-    fun createItem(line: String): Item? {
+    private var preformat = false
+
+    private fun createItem(line: String): Item? {
         val r = regex.find(line)
-        if (r!=null){
+        if (r != null) {
             val url = try {
                 this.url.resolve(r.groupValues[2])
-            }catch (e: Exception){
+            } catch (e: Exception) {
                 log.log(Level.SEVERE, "error resolving url on line: $line", e)
                 null
             }
             val txt = r.groupValues[3]
             //println("TXT $txt URL $url")
 
-            return Item(if(txt=="") url.toString() else txt, url = url)
-        }else if (line.startsWith("```")){
+            return Item(if (txt == "") url.toString() else txt, url = url)
+        } else if (line.startsWith("```")) {
             preformat = !preformat
             return null
-        }
-        else{
-            return Item(line)
+        } else {
+            return Item(line, preformat = preformat)
         }
     }
 }
 
-class GopherDocument(txt: String,  url: URI) : Document(url) {
+class GopherDocument(txt: String, url: URI) : Document(url) {
     init {
         txt.lines().forEach {
-            if (it.length>3) items.add(createItem(it))
+            if (it.length > 3) items.add(createItem(it))
         }
     }
 
@@ -93,33 +96,38 @@ class GopherDocument(txt: String,  url: URI) : Document(url) {
         val hostName = s[2].trim()
         val port = s[3].trim().toInt()
         //println("type $type selector $selector")
-        if(type=='0' || type=='1') {
-            return Item(display, type,URI("gopher://${hostName}:${port}/${type}${URLEncoder.encode(selector,"UTF-8")}"))
-        }else if(type=='h' && selector.startsWith("URL:", true)){
+        if (type == '0' || type == '1') {
+            return Item(
+                display,
+                type,
+                URI("gopher://${hostName}:${port}/${type}${URLEncoder.encode(selector, "UTF-8")}")
+            )
+        } else if (type == 'h' && selector.startsWith("URL:", true)) {
             return Item(display, type, URI(selector.drop(4)))
-        }else{
+        } else {
             return Item(display, type)
         }
     }
 }
 
 
-
-class Item(val text: String, val gopherType: Char = '0', val url: URI? = null) {
-
+class Item(
+    val text: String, val gopherType: Char = '0',
+    val url: URI? = null, val preformat: Boolean = false
+) {
 
 
 }
 
 
-class TextDocument(txt: String,  url: URI) : Document(url) {
+class TextDocument(txt: String, url: URI) : Document(url) {
     init {
-        txt.lines().forEach { items.add(Item(it,'i')) }
+        txt.lines().forEach { items.add(Item(it, 'i')) }
     }
 }
 
 class ErrorResponse(val txt: String) : Response() {
-    val errorText = when{
+    val errorText = when {
         txt.startsWith("4") -> "TEMPORARY FAILURE"
         txt.startsWith("41") -> "TEMPORARY FAILURE: SERVER UNAVAILABLE"
         txt.startsWith("42") -> "TEMPORARY FAILURE: CGI ERROR"
@@ -135,7 +143,7 @@ class ErrorResponse(val txt: String) : Response() {
     }
 
     override fun toString(): String {
-        return errorText+" ["+txt+"]"
+        return errorText + " [" + txt + "]"
 
     }
 }

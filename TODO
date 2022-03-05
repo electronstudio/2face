@@ -7,3 +7,13 @@ split into separate projects for core/text/graphical
 make bold/italic/underline configurable
 parse ** in gemtext
 parse bullet lists
+move analysis of whether item is a header, a quote, etc to Document since it will
+be useful to all clients
+configurable scroll, quit keys
+handle response code 6
+select/copy
+mouse to go back
+dont require back after opening external url
+why does gemini://heavysquare.com/ links not work?
+jpg links?
+dont redraw whole screen when mouse moves
